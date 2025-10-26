@@ -1,0 +1,5 @@
+{
+    "java.configuration.updateBuildConfiguration": "interactive",
+    "cSpell.enabledLanguageIds": ["plaintext", "markdown", "javascript"],
+    "cSpell.words": ["springframework", "SpringBoot", "Jpa"]
+}

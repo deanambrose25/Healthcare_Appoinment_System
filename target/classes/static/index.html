@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Healthcare Appointment System</title>
+    <style>
+        body {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background-color: #f0f8ff;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            background-color: #2c3e50;
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+
+        .api-status {
+            background-color: #e8f5e8;
+            border: 1px solid #4CAF50;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .api-status.error {
+            background-color: #ffeaea;
+            border-color: #f44336;
+            color: #d32f2f;
+        }
+
+        .main-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .form-section, .appointments-section {
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .form-section h2, .appointments-section h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #34495e;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .submit-btn {
+            background-color: #3498db;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        .submit-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .submit-btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .appointment-item {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border-left: 5px solid #3498db;
+            transition: transform 0.2s;
+        }
+
+        .appointment-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .appointment-item h4 {
+            margin: 0 0 15px 0;
+            color: #2c3e50;
+            font-size: 1.2rem;
+        }
+
+        .appointment-item p {
+            margin: 8px 0;
+            color: #5a6c7d;
+        }
+
+        .appointment-id {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .success-msg, .error-msg {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .success-msg {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .error-msg {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @media (max-width: 768px) {
+            .main-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Healthcare Management System</h1>
+            <p>Book and manage your medical appointments online</p>
+        </div>
+
+
+
+        <div class="main-section">
+            <div class="form-section">
+                <h2>📅 Book New Appointment</h2>
+                
+                <div class="success-msg" id="successMsg"></div>
+                <div class="error-msg" id="errorMsg"></div>
+                
+                <div class="loading" id="loadingIndicator">
+                    <div class="spinner"></div>
+                    <p>Processing appointment...</p>
+                </div>
+                
+                <form id="appointmentForm">
+                    <div class="form-group">
+                        <label for="patientName">Patient Full Name:</label>
+                        <input type="text" id="patientName" name="patientName" required 
+                               placeholder="Enter patient's full name">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email Address:</label>
+                        <input type="email" id="email" name="email" required 
+                               placeholder="patient@example.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="age">Age:</label>
+                        <input type="number" id="age" name="age" min="1" max="120" required 
+                               placeholder="Enter age">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="phone">Phone Number:</label>
+                        <input type="tel" id="phone" name="phone" required 
+                               placeholder="+1 (555) 123-4567">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="doctor">Select Doctor:</label>
+                        <select id="doctor" name="doctor" required>
+                            <option value="">Choose Doctor</option>
+                            <option value="1">Dr. John Smith - General Medicine</option>
+                            <option value="2">Dr. Mary Johnson - Pediatrics</option>
+                            <option value="3">Dr. Robert Brown - Cardiology</option>
+                            <option value="4">Dr. Sarah Davis - Dermatology</option>
+                            <option value="5">Dr. Michael Wilson - Orthopedics</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="date">Appointment Date:</label>
+                        <input type="date" id="date" name="date" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="time">Appointment Time:</label>
+                        <select id="time" name="time" required>
+                            <option value="">Select Time</option>
+                            <option value="09:00">09:00 AM</option>
+                            <option value="09:30">09:30 AM</option>
+                            <option value="10:00">10:00 AM</option>
+                            <option value="10:30">10:30 AM</option>
+                            <option value="11:00">11:00 AM</option>
+                            <option value="11:30">11:30 AM</option>
+                            <option value="14:00">02:00 PM</option>
+                            <option value="14:30">02:30 PM</option>
+                            <option value="15:00">03:00 PM</option>
+                            <option value="15:30">03:30 PM</option>
+                            <option value="16:00">04:00 PM</option>
+                            <option value="16:30">04:30 PM</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reason">Reason for Visit:</label>
+                        <input type="text" id="reason" name="reason" required 
+                               placeholder="Brief description of medical concern">
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        📋 Book Appointment
+                    </button>
+                </form>
+            </div>
+
+            <div class="appointments-section">
+                <h2>📋 Scheduled Appointments</h2>
+                <div class="loading" id="appointmentsLoading">
+                    <div class="spinner"></div>
+                    <p>Loading appointments...</p>
+                </div>
+                <div id="appointmentsList">
+                    <p style="text-align: center; color: #7f8c8d; padding: 30px;">
+                        No appointments found. Book your first appointment!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Configuration - Update these URLs to match your Java backend
+        const API_BASE_URL = 'http://localhost:8080/api';
+        const ENDPOINTS = {
+            appointments: `${API_BASE_URL}/appointments`,
+            doctors: `${API_BASE_URL}/doctors`,
+            patients: `${API_BASE_URL}/patients`
+        };
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeApp();
+        });
+
+        async function initializeApp() {
+            setMinimumDate();
+            await checkBackendConnection();
+            await loadAppointments();
+            setupFormHandlers();
+        }
+
+        function setMinimumDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('date').min = today;
+        }
+
+        async function checkBackendConnection() {
+            // Status check removed for cleaner interface
+        }
+
+     async function loadAppointments() {
+    const loadingElement = document.getElementById('appointmentsLoading');
+    const listElement = document.getElementById('appointmentsList');
+    
+    loadingElement.style.display = 'block';
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/appointments`);
+        const appointments = await response.json();
+        displayAppointments(appointments);
+    } catch (error) {
+        console.error('Error loading appointments:', error);
+        listElement.innerHTML = '<p style="color:red; text-align:center;">⚠️ Failed to load appointments from backend.</p>';
+    } finally {
+        loadingElement.style.display = 'none';
+    }
+}
+
+
+        function setupFormHandlers() {
+            const form = document.getElementById('appointmentForm');
+            form.addEventListener('submit', handleFormSubmission);
+
+            // Real-time validation
+            const inputs = document.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                input.addEventListener('blur', validateField);
+                input.addEventListener('input', clearFieldError);
+            });
+        }
+async function handleFormSubmission(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    
+    submitBtn.disabled = true;
+    loadingIndicator.style.display = 'block';
+    hideMessages();
+
+    try {
+        const formData = new FormData(e.target);
+        const appointmentData = {
+            patientName: formData.get('patientName'),
+            email: formData.get('email'),
+            age: parseInt(formData.get('age')),
+            phone: formData.get('phone'),
+            doctorId: parseInt(formData.get('doctor')),
+            appointmentDate: formData.get('date'),
+            appointmentTime: formData.get('time'),
+            reason: formData.get('reason'),
+        };
+
+        const response = await fetch(`${API_BASE_URL}/appointments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(appointmentData)
+        });
+
+        if (!response.ok) throw new Error("Failed to book appointment");
+        showSuccessMessage("✅ Appointment booked successfully!");
+        e.target.reset();
+        await loadAppointments();
+    } catch (error) {
+        console.error('Error booking appointment:', error);
+        showErrorMessage('Failed to book appointment. Please try again.');
+    } finally {
+        submitBtn.disabled = false;
+        loadingIndicator.style.display = 'none';
+    }
+}
+
+
+         
+       async function deleteAppointment(appointmentId) {
+    if (!confirm('Are you sure you want to cancel this appointment?')) return;
+
+    try {
+        await fetch(`${API_BASE_URL}/appointments/${appointmentId}`, {
+            method: "DELETE"
+        });
+
+        showSuccessMessage('Appointment cancelled successfully!');
+        await loadAppointments();
+    } catch (error) {
+        console.error('Error cancelling appointment:', error);
+        showErrorMessage('Failed to cancel appointment.');
+    }
+}
+
+        function displayAppointments(appointments) {
+            const listElement = document.getElementById('appointmentsList');
+            
+            if (!appointments || appointments.length === 0) {
+                listElement.innerHTML = '<p style="text-align: center; color: #7f8c8d; padding: 30px;">No appointments scheduled.</p>';
+                return;
+            }
+
+            listElement.innerHTML = appointments.map(appointment => `
+                <div class="appointment-item">
+                    <h4>${getDoctorName(appointment.doctorId)}</h4>
+                    <p><strong>Patient:</strong> ${appointment.patientName} (Age: ${appointment.age})</p>
+                    <p><strong>Email:</strong> ${appointment.email}</p>
+                    <p><strong>Date:</strong> ${formatDate(appointment.appointmentDate)}</p>
+                    <p><strong>Time:</strong> ${formatTime(appointment.appointmentTime)}</p>
+                    <p><strong>Phone:</strong> ${appointment.phone}</p>
+                    <p><strong>Reason:</strong> ${appointment.reason}</p>
+                    <p class="appointment-id">ID: ${appointment.id}</p>
+                    <button class="delete-btn" onclick="deleteAppointment(${appointment.id})">
+                        🗑️ Cancel Appointment
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function getDoctorName(doctorId) {
+            const doctors = {
+                1: 'Dr. John Smith - General Medicine',
+                2: 'Dr. Mary Johnson - Pediatrics',
+                3: 'Dr. Robert Brown - Cardiology',
+                4: 'Dr. Sarah Davis - Dermatology',
+                5: 'Dr. Michael Wilson - Orthopedics'
+            };
+            return doctors[doctorId] || 'Unknown Doctor';
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'long',
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+
+        function formatTime(timeString) {
+            const [hours, minutes] = timeString.split(':');
+            const hour = parseInt(hours);
+            const amp = hour >= 12 ? 'PM' : 'AM';
+            const displayHour = hour % 12 || 12;
+            return `${displayHour}:${minutes} ${amp}`;
+        }
+
+        function validateField(e) {
+            const field = e.target;
+            if (field.hasAttribute('required') && !field.value.trim()) {
+                field.style.borderColor = '#e74c3c';
+            } else if (field.type === 'email' && field.value && !isValidEmail(field.value)) {
+                field.style.borderColor = '#e74c3c';
+            } else {
+                field.style.borderColor = '#bdc3c7';
+            }
+        }
+
+        function clearFieldError(e) {
+            e.target.style.borderColor = '#bdc3c7';
+        }
+
+        function isValidEmail(email) {
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        }
+
+        function showSuccessMessage(message) {
+            const element = document.getElementById('successMsg');
+            element.textContent = message;
+            element.style.display = 'block';
+            setTimeout(() => element.style.display = 'none', 5000);
+        }
+
+        function showErrorMessage(message) {
+            const element = document.getElementById('errorMsg');
+            element.textContent = message;
+            element.style.display = 'block';
+            setTimeout(() => element.style.display = 'none', 5000);
+        }
+
+        function hideMessages() {
+            document.getElementById('successMsg').style.display = 'none';
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'98ae9fb547257f7c',t:'MTc1OTg1Mjk1Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
